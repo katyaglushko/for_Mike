@@ -1,0 +1,2 @@
+[all]
+#hostnames of the servers you want to install ES, Filebeat and Kibana on
