@@ -1,0 +1,84 @@
+---
+- name: Install Filebeat
+  hosts: all
+  become: yes
+  tasks:
+    - name: Download Filebeat Package
+      command: curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-6.8.10-x86_64.rpm
+    - name: Install Filebeat Package
+      become: yes
+      yum: 
+        name: filebeat-6.8.10-x86_64.rpm
+        state: present
+    - name: Remove FileBeat YAML File
+      become: yes
+      file:
+        path: /etc/filebeat/filebeat.yml
+        state: absent
+    - name: Create New FileBeat YAML File
+      become: yes
+      file:
+        path: /etc/filebeat/filebeat.yml
+        state: touch
+    - name: Add FileBeat YAML Configuration
+      become: yes
+      blockinfile:
+          path: /etc/filebeat/filebeat.yml
+          marker: ""
+          block:
+            filebeat.inputs:
+            - type: log
+              paths: 
+                 - /var/log/nginx/error.log
+            output.logstash:
+              hosts: ["localhost:5443"]    
+    - name: Start FileBeat Service
+      become: yes
+      service:
+        name: filebeat
+        state: started
+    - name: Install Java
+      yum:
+        name: java-1.8.0-openjdk.x86_64
+        state: present
+    - name: Add Elasticsearch GPG key.
+      rpm_key:
+       key: https://packages.elastic.co/GPG-KEY-elasticsearch
+       state: present
+    - name: Add Elasticsearch yum repository.
+      yum_repository:
+        name: elasticsearch
+        description: Elasticsearch repository for 7.x packages
+        baseurl: https://artifacts.elastic.co/packages/7.x/yum
+        gpgcheck: 1
+        gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled: 1
+    - name: Install ElasticSearch
+      yum:
+        name: elasticsearch
+        enablerepo: elasticsearch
+        state: installed
+    - name: start and enable es
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+    - name: Add Kibana yum repository.
+      yum_repository:
+        name: kibana
+        description: Kibana repository for 7.x packages
+        file: kibana
+        baseurl: https://artifacts.elastic.co/packages/7.x/yum
+        gpgcheck: 1
+        gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled: 1
+    - name: Install Kibana
+      yum:
+        name: kibana
+        enablerepo: kibana
+        state: installed
+    - name: start and enable Kibana
+      ansible.builtin.systemd:
+        name: kibana
+        state: started
+        enabled: yes
